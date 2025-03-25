@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15
+    container_name: fitness_db
+    restart: always
+    environment:
+      POSTGRES_DB: fitness_db
+      POSTGRES_USER: telesphore
+      POSTGRES_PASSWORD: 91073@Tecy
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  web:
+    build: .
+    container_name: fitness_app
+    restart: always
+    depends_on:
+      - db
+    environment:
+      - DEBUG=True
+      - DATABASE_URL=postgres://telesphore:91073@Tecy@db:5432/fitness_db
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py collectstatic --noinput &&
+             gunicorn fitness_project.wsgi:application --bind 0.0.0.0:8000"
+
+  nginx:
+    build:
+      context: ./nginx
+    container_name: fitness_nginx
+    restart: always
+    depends_on:
+      - web
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx:/etc/nginx/conf.d
+
+volumes:
+  postgres_data:
